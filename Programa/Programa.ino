@@ -3,6 +3,8 @@ const int DHTPIN= 2;
 const int BUTTONPIN= 3;
 int mode= 0;
 int holder= 0;
+int counter= 0;
+float lmv[10];
 
 #include "DHT.h"
 
@@ -82,6 +84,12 @@ void read_dht(){
   Serial.print(hif);
   Serial.println(" *F");
 
+
+  //conversão de humidade segundo as incertezas
+  //float a= 0.73849495
+  //float b= 7.913410663
+  //h= a*h + b
+
   String out= "Humidade: ";
   out+= h;
   out+= "%";
@@ -99,8 +107,18 @@ void read_lm(){
   
   Serial.print("\nmilivolts: "); Serial.print(voltage);
 
-  int temp= (voltage-100)/5;
-  int temp2= ((voltage-100)%5)*2;
+
+  lmv[counter]= float(voltage)/9.2;
+  float media= 0.0;
+  int i= 0;
+  while( i != 10 ){
+    media+= lmv[i];
+    i+=1;
+  }
+  media/= 10;
+
+  int temp= int(media);
+  int temp2= int(media*10)%10;
   
   String out= "";
   out+= temp;
@@ -111,6 +129,9 @@ void read_lm(){
   lcd.print("Temperatura:    ");
   lcd.setCursor(0,1);
   lcd.print(out);
+
+  counter+= 1;
+  counter%= 10;
 }
 
 void read_button(){
