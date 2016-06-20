@@ -6,6 +6,8 @@ int holder= 0;
 int counter= 0;
 int namecounter= 0;
 int lmv[10];
+double altitudev[10];
+int altitudecounter= 0;
 
 #include "DHT.h"
 
@@ -17,7 +19,7 @@ int lmv[10];
 DHT dht(DHTPIN, DHT22);
 
 SFE_BMP180 pressure;
-double baseline;
+double baseline = 1023.25;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -29,7 +31,6 @@ void setup(){
 
   if (pressure.begin()){
     Serial.println("BMP180 init success");
-    baseline = getPressure();
   }
 
   lcd.begin();
@@ -41,13 +42,13 @@ void setup(){
 void loop(){                     // run over and over again
   delay(50);
   read_button();
-  //Serial.print(mode);
   switch(mode){
     case 0: display_names(); break;
     case 1: read_lm(true); break;
     case 2: read_lm(false); break;
     case 3: read_dht(); break;
     case 4: read_bmp(); break;
+    case 5: get_altitude(); break;
   }
 }
 
@@ -71,10 +72,13 @@ void display_names(){
     while (i!=16){
       if ( ( (namecounter-30) < 16 ) or ( (limit*3+30-namecounter) < 16)    ){
           temp2+= estacao[(i+(namecounter-30) )%32];
-        }
-      
+      }
       temp+=names[ (i+((namecounter-30)/3))%limit];
       i+= 1;
+    }
+
+    if( !( ( (namecounter-30) < 16 ) or ( (limit*3+30-namecounter) < 16)    )){
+      temp2+=insper;
     }
 
     lcd.setCursor(0,0);
@@ -89,45 +93,14 @@ void display_names(){
 
 void read_dht(){
   
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
   float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  float f = dht.readTemperature(true);
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t) || isnan(f)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
-
-  // Compute heat index in Fahrenheit (the default)
-  float hif = dht.computeHeatIndex(f, h);
-  // Compute heat index in Celsius (isFahreheit = false)
-  float hic = dht.computeHeatIndex(t, h, false);
-
-  Serial.print("Humidity: ");
-  Serial.print(h);
-  Serial.print(" %\t");
-  Serial.print("Temperature: ");
-  Serial.print(t);
-  Serial.print(" *C ");
-  Serial.print(f);
-  Serial.print(" *F\t");
-  Serial.print("Heat index: ");
-  Serial.print(hic);
-  Serial.print(" *C ");
-  Serial.print(hif);
-  Serial.println(" *F");
 
   //conversão start
   const float dhti= 1.9386022720053262;
   h= h*0.97385071 - dhti;
   //conversão end
 
-  String out= "Humidade: ";
+  String out= "Umidade: ";
   out+= h;
   out+= "%";
   lcd.setCursor(0,0);
@@ -200,38 +173,50 @@ void read_button(){
     holder= push;
     if (holder == 0){
       mode+= 1;
-      mode%= 5;
+      mode%= 6;
     }
   }
 }
 
-void read_bmp(){
-  double a,P;
-  
-  // Get a new pressure reading:
+void get_altitude(){
+  double a, P;
+  P = getPressure();
+  a = pressure.altitude(P,baseline);
 
+  altitudev[altitudecounter]= a;
+  int i =0;
+  double media= 0;
+  while(i != 10){
+    media+= altitudev[i];
+    i+=1;
+  }
+  media/=10;
+  
+  String out= "";
+  out+= media;
+  out+=" metros";
+  out+="             ";
+  lcd.setCursor(0,0);
+  lcd.print("Altitude:       ");
+  lcd.setCursor(0,1);
+  lcd.print(out);
+
+  altitudecounter+= 1;
+  altitudecounter%= 10;
+}
+
+void read_bmp(){
+  double P;
   P = getPressure();
 
-  // Show the relative altitude difference between
-  // the new reading and the baseline reading:
-
-  a = pressure.altitude(P,baseline);
-  
-  Serial.print("relative altitude: ");
-  if (a >= 0.0) Serial.print(" "); // add a space for positive numbers
-  Serial.print(a,1);
-  Serial.print(" meters, ");
-  if (a >= 0.0) Serial.print(" "); // add a space for positive numbers
-  Serial.print(a*3.28084,0);
-  Serial.println(" feet");
-
-  String out= "Pressao: ";
+  String out= "";
   out+= P;
-  out+=" ";
+  out+=" milibar";
+  out+="             ";
   lcd.setCursor(0,0);
-  lcd.print(out);
+  lcd.print("Pressao:        ");
   lcd.setCursor(0,1);
-  lcd.print("milibar         ");
+  lcd.print(out);
   //lcd.print("                ");
 }
 
